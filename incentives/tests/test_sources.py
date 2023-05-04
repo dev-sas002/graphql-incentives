@@ -6,6 +6,7 @@ import requests
 from django.test import SimpleTestCase, override_settings
 
 from incentives.sources import (
+    MAX_LOGGED_ERROR_CHARS,
     RETRY_STATUSES,
     GraphQLIncentiveSource,
     ImproperlyConfiguredSource,
@@ -140,6 +141,22 @@ class GraphQLIncentiveSourceTests(SimpleTestCase):
                 source.fetch(18)
 
         self.assertTrue(any("subnet not found" in line for line in logs.output))
+
+    def test_logged_graphql_errors_are_clipped(self):
+        source = GraphQLIncentiveSource()
+
+        with patch.object(source.session, "post") as mock_post:
+            mock_post.return_value.json.return_value = {
+                "data": None,
+                "errors": [{"message": "x" * 100_000}],
+            }
+            with (
+                self.assertLogs("incentives.sources", level="WARNING") as logs,
+                self.assertRaises(UpstreamUnavailable),
+            ):
+                source.fetch(18)
+
+        self.assertLess(max(len(line) for line in logs.output), MAX_LOGGED_ERROR_CHARS + 200)
 
 
 class SampleIncentiveSourceTests(SimpleTestCase):

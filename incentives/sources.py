@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # Statuses worth a second attempt: rate limiting and transient server errors.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
 
+# Upper bound on how much of an upstream "errors" section is written to the log.
+MAX_LOGGED_ERROR_CHARS = 500
+
 
 class UpstreamUnavailable(RuntimeError):
     """Raised when a source cannot produce data for a subnet."""
@@ -136,7 +139,12 @@ class GraphQLIncentiveSource:
         # errors section has to be inspected explicitly rather than swallowed.
         errors = payload.get("errors") if isinstance(payload, dict) else None
         if errors:
-            logger.warning("Incentives API returned GraphQL errors: %s", errors)
+            # Upstream controls this text, so it is clipped before it reaches
+            # the log: one malformed reply must not write megabytes per request.
+            logger.warning(
+                "Incentives API returned GraphQL errors: %s",
+                str(errors)[:MAX_LOGGED_ERROR_CHARS],
+            )
 
         series = parse_response(payload)
         if not series:
