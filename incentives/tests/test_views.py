@@ -106,6 +106,20 @@ class PlotViewTests(SimpleTestCase):
         self.assertTrue(any(item.uid not in plotted for item in shown))
         self.assertContains(response, "not plotted")
 
+    def test_mean_tile_describes_what_it_averages(self):
+        # The mean is taken over every UID in the subnet, not just the plotted
+        # ones, so the note must not claim otherwise.
+        response = self.client.get(reverse("plot_view"), {"top": 2})
+
+        self.assertContains(response, f"across all {response.context['stats'].uid_count} UIDs")
+        self.assertNotContains(response, "across every plotted point")
+
+    def test_every_accepted_top_value_is_offered_in_the_picker(self):
+        response = self.client.get(reverse("plot_view"), {"top": 1})
+
+        self.assertEqual(response.context["top_n"], 1)
+        self.assertContains(response, '<option value="1" selected>', html=False)
+
     def test_top_parameter_is_clamped_to_the_palette_size(self):
         response = self.client.get(reverse("plot_view"), {"top": 99})
 

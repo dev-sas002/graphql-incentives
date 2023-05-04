@@ -54,7 +54,7 @@
     <div class="card tile">
       <p class="tile__label">Subnet mean</p>
       <p class="tile__value">{{ stats.mean_value|floatformat:4 }}</p>
-      <p class="tile__note">across every plotted point</p>
+      <p class="tile__note">across all {{ stats.uid_count }} UIDs</p>
     </div>
     <div class="card tile">
       <p class="tile__label">Window</p>
@@ -83,7 +83,7 @@
         </div>
         <img class="chart__image" data-chart-image
              src="{% url 'chart_image' %}?subnet={{ subnet_uid }}&amp;top={{ top_n }}"
-             alt="Line chart of incentive over time for the top {{ top_n }} UIDs on subnet {{ subnet_uid }}"
+             alt="Line chart of incentive over time for the top {{ report.plotted_uids|length }} UIDs on subnet {{ subnet_uid }}"
              width="1320" height="616">
       </div>
     </div>

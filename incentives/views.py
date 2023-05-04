@@ -112,7 +112,7 @@ def plot_view(request: HttpRequest) -> HttpResponse:
             "top_n": top_n,
             "was_cached": was_cached,
             "cache_ttl": settings.INCENTIVES_CACHE_TTL,
-            "top_choices": range(2, MAX_SERIES + 1),
+            "top_choices": range(1, MAX_SERIES + 1),
             "featured_subnets": FEATURED_SUBNETS,
             "anomalies": report.anomalies[:6],
         },
