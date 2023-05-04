@@ -10,33 +10,62 @@ reasons — `graphene` and `graphql-core` are not installed.)
 
 ![Subnet dashboard](docs/screenshots/dashboard.png)
 
-That is the whole product. Three more screens, captured with Playwright at
-1440x900 against the deterministic `sample` source, hence reproducible:
+That is the whole product. More screens, captured with Playwright against the
+Docker Compose stack and the deterministic `sample` source, hence reproducible:
 
 | | |
 | --- | --- |
 | [Top four UIDs](docs/screenshots/top-four.png) | At four series or fewer the renderer swaps the legend for direct end-of-line labels (`DIRECT_LABEL_LIMIT`). |
 | [Overview](docs/screenshots/overview.png) | The landing page and subnet picker. |
 | [Upstream unavailable](docs/screenshots/upstream-down.png) | A dead upstream is a 503 page offering other subnets, not a traceback. Nothing is cached from a failed fetch, so "Try again" costs exactly one request. |
+| [Phone width](docs/screenshots/dashboard-mobile.png) | The same dashboard at 390x844: controls wrap and the stat tiles fall to two columns. |
 
 ## Run it
 
 ```bash
-python -m venv project_venv && source project_venv/bin/activate
+docker compose up --build        # then open http://localhost:8240/plot/
+```
+
+That builds the multi-stage, non-root image (gunicorn, two workers by four
+threads), starts Redis next to it as the shared cache, and serves on host port
+8240 with `INCENTIVES_SOURCE=sample`. The container reports healthy once
+`/healthz` answers. No `migrate` step: there is no database. `sample` is the
+in-box deterministic generator (24 UIDs, 48 hours hourly, seeded from the subnet
+id), so the app is populated with no credentials and no network. Set
+`INCENTIVES_SOURCE=graphql` to query `GRAPHQL_API_URL` instead.
+
+Without Docker (Python 3.12, see `.python-version`):
+
+```bash
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 INCENTIVES_SOURCE=sample python manage.py runserver 8240   # then :8240/
 ```
 
-No `migrate` step — there is no database. `sample` is the in-box deterministic
-generator (24 UIDs, 48 hours hourly, seeded from the subnet id), so the app is
-populated with no credentials and no network. Drop it and the default source is
-`graphql`, pointed at `GRAPHQL_API_URL`.
+### Talking to it
 
-`Dockerfile` and `docker-compose.yml` are committed (multi-stage, non-root,
-gunicorn, app plus Redis on host port 8240 with `INCENTIVES_SOURCE=sample`) — but
-know how far that got checked: this repo's uplift report records `docker compose
-config` as parsing OK, and both **Build verified** and **Boot verified** as
-`NOT RUN — deferred, RAM constraint`.
+Captured from the Compose stack above:
+
+```console
+$ curl -s localhost:8240/healthz
+{"status": "ok", "source": "sample"}
+
+$ curl -sI "localhost:8240/plot/chart.png?subnet=18&top=6"
+HTTP/1.1 200 OK
+Content-Type: image/png
+Cache-Control: public, max-age=300
+Content-Length: 116152
+
+$ curl -s "localhost:8240/plot/chart.png?subnet=abc"
+'abc' is not a valid subnet id.          # HTTP 400, text/plain
+
+$ curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" \
+    "localhost:8240/plot/?subnet=21&top=3&refresh=1"
+302 http://localhost:8240/plot/?subnet=21&top=3
+```
+
+The first `/plot/?subnet=5` took 129 ms (sample fetch plus matplotlib render);
+the repeat took 4 ms and the page said "served from cache".
 
 ## What happens on a request to `/plot/`
 
@@ -174,11 +203,15 @@ Every knob has a working default; the full list is in `graphql/settings.py`.
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | *(unset)* / `claude-opus-5` | Enables the written summary. `AI_SUMMARY_ENABLED` is an independent kill switch. |
 | `DJANGO_SECRET_KEY` / `DJANGO_DEBUG` | insecure dev key / `False` | Set a real key when deployed. `DEBUG` is off by default. |
 
+`.env.example` lists all of them with their defaults. Nothing loads a `.env`
+file automatically: export the values in your shell, or set them in Compose or
+your host's settings.
+
 ## Tests
 
 ```bash
 pip install -r requirements-dev.txt     # runtime requirements + ruff
-python manage.py test                   # Ran 135 tests in 2.968s / OK
+python manage.py test                   # Ran 140 tests in 2.8s / OK
 ruff check . && ruff format --check .
 ```
 
@@ -197,4 +230,9 @@ and `domain` — functions of their arguments, needing no mocks.
   pre-rendering popular subnets on a schedule, not a worker in the request path.
 - **Flagging is statistical, not causal.** A UID moved sharply, not why.
 - **`sample` data is synthetic** — real-shaped, but generated. Screenshots use it.
-- **No authentication and no rate limiting.**
+- **No authentication and no rate limiting.** `?refresh=1` drops one cache
+  entry for anyone who asks, so put a rate limit in front of a public deploy.
+
+## Licence
+
+MIT, see `LICENSE`.
