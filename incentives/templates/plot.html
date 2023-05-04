@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Subnet {{ subnet_uid }} · incentive over time{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Subnet {{ subnet_uid }} · incentive over time</h1>
+  <p class="lede">
+    Top {{ report.plotted_uids|length }} UID{{ report.plotted_uids|length|pluralize }} by peak
+    incentive{% if report.other_series_count %}, with {{ report.other_series_count }} lower-ranked
+    UID{{ report.other_series_count|pluralize }} omitted{% endif %}.
+  </p>
+
+  <form class="card controls" method="get" action="{% url 'plot_view' %}">
+    <label class="field">
+      <span class="field__label">Subnet</span>
+      <input type="number" name="subnet" min="0" max="1023" value="{{ subnet_uid }}" required>
+    </label>
+    <label class="field">
+      <span class="field__label">UIDs plotted</span>
+      <select name="top">
+        {% for choice in top_choices %}
+          <option value="{{ choice }}" {% if choice == top_n %}selected{% endif %}>Top {{ choice }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="button" type="submit">Update</button>
+    <a class="button button--ghost" href="?subnet={{ subnet_uid }}&amp;top={{ top_n }}&amp;refresh=1">Refresh data</a>
+    <div class="field">
+      <span class="field__label">Jump to</span>
+      <div class="chips">
+        {% for subnet in featured_subnets %}
+          <a class="chip" href="?subnet={{ subnet }}&amp;top={{ top_n }}"
+             {% if subnet == subnet_uid %}aria-current="page"{% endif %}>{{ subnet }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <span class="badge" style="margin-left:auto;">
+      <span class="badge__dot"></span>{% if was_cached %}served from cache{% else %}rendered just now{% endif %}
+    </span>
+  </form>
+
+  <div class="tiles">
+    <div class="card tile">
+      <p class="tile__label">UIDs tracked</p>
+      <p class="tile__value">{{ stats.uid_count }}</p>
+      <p class="tile__note">{{ stats.point_count|intcomma }} observations</p>
+    </div>
+    <div class="card tile">
+      <p class="tile__label">Peak incentive</p>
+      <p class="tile__value">{{ stats.peak_value|floatformat:4 }}</p>
+      <p class="tile__note">UID {{ stats.peak_uid }}</p>
+    </div>
+    <div class="card tile">
+      <p class="tile__label">Subnet mean</p>
+      <p class="tile__value">{{ stats.mean_value|floatformat:4 }}</p>
+      <p class="tile__note">across every plotted point</p>
+    </div>
+    <div class="card tile">
+      <p class="tile__label">Window</p>
+      <p class="tile__value">{{ stats.window_hours|floatformat:0 }}h</p>
+      <p class="tile__note">to {{ stats.window_end|date:"d M H:i" }} UTC</p>
+    </div>
+    <div class="card tile">
+      <p class="tile__label">Trend</p>
+      <p class="tile__value">{{ stats.rising_count }}&thinsp;/&thinsp;{{ stats.falling_count }}</p>
+      <p class="tile__note">UIDs rising / falling</p>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">Incentive by UID</h2>
+      <span class="card__meta">
+        source: {{ report.source_name }} · cached for {{ cache_ttl }}s ·
+        generated {{ report.generated_at|date:"H:i:s" }} UTC
+      </span>
+    </div>
+    <div class="card__body">
+      <div class="chart">
+        <div class="chart__skeleton" data-chart-skeleton>
+          <span class="spinner" aria-hidden="true"></span> Rendering chart…
+        </div>
+        <img class="chart__image" data-chart-image
+             src="{% url 'chart_image' %}?subnet={{ subnet_uid }}&amp;top={{ top_n }}"
+             alt="Line chart of incentive over time for the top {{ top_n }} UIDs on subnet {{ subnet_uid }}"
+             width="1320" height="616">
+      </div>
+    </div>
+  </section>
+
+  <div class="split">
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title">Summary</h2>
+        <span class="card__meta">
+          {% if report.summary_source == "model" %}written by Claude from the computed statistics
+          {% else %}computed from the series{% endif %}
+        </span>
+      </div>
+      <div class="card__body">
+        <p class="summary">{{ report.summary }}</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <h2 class="card__title">Flagged step changes</h2>
+        <span class="card__meta">{{ report.anomalies|length }} across all {{ stats.uid_count }} UIDs</span>
+      </div>
+      <div class="card__body">
+        {% if anomalies %}
+          <table class="data">
+            <thead>
+              <tr><th>UID</th><th>When</th><th>Change</th><th>z</th></tr>
+            </thead>
+            <tbody>
+              {% for anomaly in anomalies %}
+                <tr>
+                  <td class="uid">
+                    <span class="dot{% if anomaly.uid not in report.plotted_uids %} dot--offchart{% endif %}"></span>{{ anomaly.uid }}
+                    {% if anomaly.uid not in report.plotted_uids %}<span class="offchart">not plotted</span>{% endif %}
+                  </td>
+                  <td>{{ anomaly.timestamp|date:"d M H:i" }}</td>
+                  <td>{{ anomaly.previous_value|floatformat:4 }} → {{ anomaly.value|floatformat:4 }}</td>
+                  <td>{{ anomaly.z_score }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="empty">No observation in this window sat far enough outside its own series to be flagged.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <p class="footnote">
+    Step changes are flagged with a median/MAD z-score over consecutive differences,
+    so a UID that simply sits high all window is not reported — only one that moves
+    sharply relative to its own behaviour. Flagging runs across every UID in the
+    subnet, not just the plotted ones; rows marked <em>not plotted</em> are ringed
+    on the chart only once that UID is in the top {{ top_n }}.
+  </p>
+
+  <script>
+    (function () {
+      var image = document.querySelector('[data-chart-image]');
+      var skeleton = document.querySelector('[data-chart-skeleton]');
+      if (!image || !skeleton) { return; }
+      function settle() {
+        skeleton.hidden = true;
+        image.classList.add('is-ready');
+      }
+      if (image.complete) { settle(); } else {
+        image.addEventListener('load', settle);
+        image.addEventListener('error', function () {
+          skeleton.textContent = 'The chart could not be rendered.';
+        });
+      }
+    })();
+  </script>
+{% endblock %}

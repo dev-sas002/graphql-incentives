@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pot
+*.log
+db.sqlite3
+
+# Environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+ENV/
+env/
+project_venv/
+
+# Build output, caches and coverage
+staticfiles/
+build/
+dist/
+node_modules/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+tmp/
+logs/
+
+# Tooling and OS
+.ipynb_checkpoints
+.vercel
+.github/
+.DS_Store
+Thumbs.db

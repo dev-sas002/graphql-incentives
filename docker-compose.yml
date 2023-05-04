@@ -1,0 +1,42 @@
+# One command, no manual steps:
+#   docker compose up --build
+# then open http://localhost:8240/plot/
+#
+# INCENTIVES_SOURCE defaults to "sample" here so the first boot is populated
+# with deterministic data and needs neither credentials nor connectivity. Set
+# it to "graphql" (and point GRAPHQL_API_URL at a live endpoint) to query the
+# real upstream API.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Deliberately not published: the cache is an internal dependency.
+
+  web:
+    build: .
+    ports:
+      - "8240:8000"
+    environment:
+      DJANGO_SECRET_KEY: "compose-dev-key-not-for-production"
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,web"
+      INCENTIVES_SOURCE: "sample"
+      GRAPHQL_API_URL: "https://api.taomarketcap.com/graphql"
+      GRAPHQL_SUBNET_UID: "18"
+      INCENTIVES_TOP_N: "6"
+      INCENTIVES_CACHE_TTL: "300"
+      REDIS_URL: "redis://redis:6379/0"
+      # Optional: export ANTHROPIC_API_KEY before `up` to enable the written
+      # chart summary. Without it the app uses the computed summary.
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      LOG_LEVEL: "INFO"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
