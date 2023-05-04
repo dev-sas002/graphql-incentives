@@ -23,7 +23,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     # read-only or non-existent home directory.
     MPLCONFIGDIR=/tmp/matplotlib
 
-RUN useradd --create-home --uid 10001 app
+RUN useradd --create-home --uid 10001 app \
+    # WORKDIR would create /app as root, and collectstatic below runs as
+    # "app" and has to create /app/staticfiles.
+    && install -d -o app -g app /app
 
 COPY --from=builder /opt/venv /opt/venv
 
