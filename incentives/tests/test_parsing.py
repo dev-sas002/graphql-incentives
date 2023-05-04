@@ -54,6 +54,16 @@ class ParseTimestampTests(SimpleTestCase):
     def test_parses_iso_8601_with_fractional_seconds(self):
         self.assertEqual(parse_timestamp("2024-01-01T12:30:45.500000").microsecond, 500000)
 
+    def test_offset_timestamps_are_converted_to_naive_utc(self):
+        self.assertEqual(
+            parse_timestamp("2024-01-01T14:30:45+02:00"),
+            dt.datetime(2024, 1, 1, 12, 30, 45),
+        )
+        self.assertEqual(
+            parse_timestamp("2024-01-01T12:30:45Z"),
+            dt.datetime(2024, 1, 1, 12, 30, 45),
+        )
+
     def test_rejects_unparseable_strings(self):
         with self.assertRaises(ValueError):
             parse_timestamp("not-a-timestamp")
@@ -318,6 +328,17 @@ class BuildSeriesTests(SimpleTestCase):
         self.assertEqual(
             parse_response(payload), build_series(extract_incentive_points(payload))
         )
+
+    def test_a_series_mixing_offset_and_plain_timestamps_still_parses(self):
+        # Before normalisation, sorting this series raised "can't compare
+        # offset-naive and offset-aware datetimes" and the page returned a 500.
+        payload = make_response_payload(
+            [(1, [("0.2", "2024-01-01T13:00:00Z"), ("0.1", "2024-01-01:12:00:00")])]
+        )
+
+        (series,) = parse_response(payload)
+
+        self.assertEqual(series.values, (0.1, 0.2))
 
     def test_empty_input_produces_no_series(self):
         self.assertEqual(build_series([]), ())

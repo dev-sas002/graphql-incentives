@@ -52,7 +52,11 @@ def build_incentives_query(subnet_uid: int) -> str:
 
 
 def parse_timestamp(value: Any) -> dt.datetime:
-    """Parse an upstream timestamp, raising ``ValueError`` if no format matches."""
+    """
+    Parse an upstream timestamp into a naive UTC datetime.
+
+    Raises ``ValueError`` if no format matches.
+    """
     if not isinstance(value, str):
         raise ValueError("timestamp must be a string")
 
@@ -63,7 +67,13 @@ def parse_timestamp(value: Any) -> dt.datetime:
             continue
 
     # Final fallback: full ISO 8601 (handles fractional seconds / offsets).
-    return dt.datetime.fromisoformat(value)
+    parsed = dt.datetime.fromisoformat(value)
+    if parsed.tzinfo is not None:
+        # Every other format yields a naive UTC value. Mixing aware and naive
+        # datetimes in one series makes sorting and min/max raise TypeError,
+        # so an offset is applied and then dropped.
+        parsed = parsed.astimezone(dt.UTC).replace(tzinfo=None)
+    return parsed
 
 
 def iter_incentive_entries(uids: Any) -> list[dict[str, Any]]:
