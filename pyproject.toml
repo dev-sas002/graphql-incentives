@@ -1,0 +1,30 @@
+[tool.ruff]
+line-length = 95
+target-version = "py312"
+extend-exclude = ["project_venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "DJ",   # Django-specific checks
+    "SIM",  # simplification
+]
+ignore = [
+    # matplotlib requires `matplotlib.use("Agg")` before pyplot is imported,
+    # which means module-level imports cannot all sit at the top of the file.
+    "E402",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"incentives/tests/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["incentives", "graphql"]
+
+[tool.ruff.format]
+quote-style = "double"

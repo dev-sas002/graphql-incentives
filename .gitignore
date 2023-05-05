@@ -1,0 +1,29 @@
+
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+
+# Environments
+.env
+.venv/
+venv/
+ENV/
+env/
+project_venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+.vercel
+
+staticfiles/
+.ruff_cache/

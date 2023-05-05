@@ -1,0 +1,14 @@
+# Direct dependencies only; pip resolves the transitive set.
+Django==5.2.17
+requests==2.34.2
+urllib3==2.8.0
+matplotlib==3.11.2
+whitenoise==6.12.0
+gunicorn==26.2.0
+
+# Optional, and imported lazily:
+#   redis   - only used when REDIS_URL is set (shared cache across workers)
+#   anthropic - only used when ANTHROPIC_API_KEY is set (chart summary);
+#               without it the app falls back to the computed summary.
+redis==8.1.0
+anthropic==1.8.0
