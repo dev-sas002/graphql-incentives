@@ -4,6 +4,7 @@
 *.pot
 *.pyc
 __pycache__/
+db.sqlite3
 
 # Environments
 .env
@@ -23,3 +24,7 @@ Thumbs.db
 .vercel
 
 staticfiles/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
