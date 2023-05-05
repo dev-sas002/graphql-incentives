@@ -1,0 +1,25 @@
+
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+
+# Environments
+.env
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+.vercel
+
+staticfiles/
