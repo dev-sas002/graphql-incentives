@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Subnet Incentives · Overview{% endblock %}
+
+{% block content %}
+  <h1 class="page__title">Bittensor subnet incentive explorer</h1>
+  <p class="lede">
+    Queries a Bittensor-style GraphQL API for a subnet's per-UID incentive time
+    series, flags step changes, and renders the highest-peaking UIDs as a chart.
+    Rendered charts are cached, so repeat views cost nothing upstream.
+  </p>
+
+  <div class="card card--controls controls">
+    <form class="controls" method="get" action="{% url 'plot_view' %}" style="padding:0;margin:0;gap:14px;">
+      <label class="field">
+        <span class="field__label">Subnet</span>
+        <input type="number" name="subnet" min="0" max="1023" value="{{ default_subnet }}" required>
+      </label>
+      <button class="button" type="submit">Open chart</button>
+    </form>
+    <div class="field">
+      <span class="field__label">Jump to</span>
+      <div class="chips">
+        {% for subnet in featured_subnets %}
+          <a class="chip" href="{% url 'plot_view' %}?subnet={{ subnet }}">Subnet {{ subnet }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <span class="badge badge--accent">source: {{ source_name }}</span>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <div class="card__head"><h2 class="card__title">What the chart shows</h2></div>
+      <div class="card__body">
+        <p class="summary">
+          Each line is one UID's incentive over the reported window. A subnet can
+          hold up to 256 UIDs, so the chart plots only the highest-peaking ones and
+          states how many were left out — a legend with 256 entries is not a legend.
+          Observations that sit far outside their own series' behaviour are ringed
+          and listed beneath the chart.
+        </p>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card__head"><h2 class="card__title">Endpoints</h2></div>
+      <div class="card__body">
+        <table class="data">
+          <tbody>
+            <tr><td class="uid">/plot/</td><td>Dashboard for one subnet</td></tr>
+            <tr><td class="uid">/plot/chart.png</td><td>The rendered chart alone</td></tr>
+            <tr><td class="uid">/healthz</td><td>Liveness probe</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+{% endblock %}
